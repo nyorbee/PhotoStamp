@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Nuitka - pliki budowania i gotowe exe (exe dodawaj do Releases, nie do repo)
+*.build/
+*.dist/
+*.onefile-build/
+*.exe
+nuitka-crash-report.xml
+
+# Dane programu (normalnie leżą w folderze użytkownika, ale na wszelki wypadek)
+.exif_lokalizacja*.json
+*.tmp
+
+# Zdjęcia robocze / wyniki
+z_napisem/
+_oryginaly/
+
+# IDE / system
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini

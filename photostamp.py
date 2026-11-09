@@ -25,9 +25,10 @@ from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFilter, ImageFont
 from PIL import JpegImagePlugin, PngImagePlugin  # noqa: F401  (jawnie, żeby Nuitka je dołączyła)
 
 APP_NAME = "PhotoStamp"
-APP_VERSION = "1.2"          # podbijaj razem z --product-version w komendzie Nuitki
+APP_VERSION = "1.3"          # podbijaj razem z --product-version w komendzie Nuitki
 FACEBOOK_URL = "https://www.facebook.com/ajtiguy"
 GITHUB_URL = "https://github.com/nyorbee/PhotoStamp"
+GITHUB_PROFILE_URL = "https://github.com/nyorbee"
 
 
 def resource_path(name):
@@ -744,15 +745,7 @@ class App(tk.Tk):
         self.L(ttk.Button(btns, command=self.add_folder), "Dodaj folder…").pack(side="left", **pad)
         self.L(ttk.Button(btns, command=self.remove_selected), "Usuń zaznaczone").pack(side="left", **pad)
         self.L(ttk.Button(btns, command=self.clear_files), "Wyczyść").pack(side="left", **pad)
-        try:
-            img = Image.open(resource_path("created.png"))
-            img.thumbnail((200, 44))
-            self.badge_img = ImageTk.PhotoImage(img)  # trzymamy referencję, inaczej obrazek zniknie
-            badge = tk.Label(btns, image=self.badge_img, cursor="hand2", bd=0)
-            badge.pack(side="right", padx=(4, 8))
-            badge.bind("<Button-1>", lambda _e: webbrowser.open(FACEBOOK_URL))
-        except (OSError, tk.TclError):
-            pass
+        self.build_badge(btns)
         # przełącznik języka EN / PL (zapamiętywany)
         lf_lang = ttk.Frame(btns)
         lf_lang.pack(side="right", padx=(4, 8))
@@ -1743,6 +1736,44 @@ class App(tk.Tk):
                 json.dump({**o, "lang": LANG}, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
+
+    # ===== logo "Created by IT Guy": lewa połowa -> Facebook, prawa -> GitHub =====
+    def build_badge(self, parent):
+        try:
+            img = Image.open(resource_path("created.png")).convert("RGBA")
+            img.thumbnail((200, 44))
+        except OSError:
+            return
+        w, h = img.size
+
+        def highlighted(left):
+            # jak na stronach: jasne, półprzezroczyste podświetlenie połówki pod kursorem
+            ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            box = [0, 0, w // 2 - 1, h - 1] if left else [w // 2, 0, w - 1, h - 1]
+            ImageDraw.Draw(ov).rounded_rectangle(box, radius=4, fill=(255, 255, 255, 42))
+            return ImageTk.PhotoImage(Image.alpha_composite(img, ov))
+
+        # trzymamy referencje, inaczej obrazki znikną
+        self._badge = {None: ImageTk.PhotoImage(img), "fb": highlighted(True), "gh": highlighted(False)}
+        lbl = tk.Label(parent, image=self._badge[None], cursor="hand2", bd=0)
+        lbl.pack(side="right", padx=(4, 8))
+
+        def half(e):
+            return "fb" if e.x < e.widget.winfo_width() / 2 else "gh"
+
+        def motion(e):
+            k = half(e)
+            lbl.configure(image=self._badge[k])
+            self.status.set("Facebook: IT Guy" if k == "fb" else "GitHub: nyorbee")
+
+        def leave(_e):
+            lbl.configure(image=self._badge[None])
+            self.status.set("")
+
+        lbl.bind("<Motion>", motion)
+        lbl.bind("<Leave>", leave)
+        lbl.bind("<Button-1>", lambda e: webbrowser.open_new_tab(
+            FACEBOOK_URL if half(e) == "fb" else GITHUB_PROFILE_URL))
 
     # ===== język =====
     def load_lang(self):
